@@ -1,0 +1,9 @@
+entity Product {
+    name String required maxlength(50),
+    amountAvailable Long required,
+    cost Long required,
+}
+
+relationship OneToOne {
+  Product{seller} to User
+}
