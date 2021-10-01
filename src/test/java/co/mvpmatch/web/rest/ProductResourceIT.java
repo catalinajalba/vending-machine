@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import co.mvpmatch.IntegrationTest;
 import co.mvpmatch.domain.Product;
+import co.mvpmatch.domain.User;
 import co.mvpmatch.repository.ProductRepository;
 import java.util.List;
 import java.util.Random;
@@ -62,7 +63,9 @@ class ProductResourceIT {
      * if they test an entity which requires the current entity.
      */
     public static Product createEntity(EntityManager em) {
-        Product product = new Product().name(DEFAULT_NAME).amountAvailable(DEFAULT_AMOUNT_AVAILABLE).cost(DEFAULT_COST);
+        User user = new User();
+        user.setId(2L);
+        Product product = new Product().name(DEFAULT_NAME).amountAvailable(DEFAULT_AMOUNT_AVAILABLE).cost(DEFAULT_COST).seller(user);
         return product;
     }
 

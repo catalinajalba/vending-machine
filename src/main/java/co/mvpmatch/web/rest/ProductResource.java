@@ -1,7 +1,11 @@
 package co.mvpmatch.web.rest;
 
 import co.mvpmatch.domain.Product;
+import co.mvpmatch.domain.Product_;
+import co.mvpmatch.domain.User;
 import co.mvpmatch.repository.ProductRepository;
+import co.mvpmatch.repository.UserRepository;
+import co.mvpmatch.security.AuthoritiesConstants;
 import co.mvpmatch.service.dto.ProductDTO;
 import co.mvpmatch.service.dto.ProductMapper;
 import co.mvpmatch.web.rest.errors.BadRequestAlertException;
@@ -9,6 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import tech.jhipster.web.util.HeaderUtil;
@@ -21,6 +27,8 @@ import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+
+import static co.mvpmatch.security.AuthoritiesConstants.SELLER;
 
 /**
  * REST controller for managing {@link co.mvpmatch.domain.Product}.
@@ -38,11 +46,13 @@ public class ProductResource {
     private String applicationName;
 
     private final ProductRepository productRepository;
+    private final UserRepository userRepository;
 
     private final ProductMapper productMapper;
 
-    public ProductResource(ProductRepository productRepository, ProductMapper productMapper) {
+    public ProductResource(ProductRepository productRepository, UserRepository userRepository, ProductMapper productMapper) {
         this.productRepository = productRepository;
+        this.userRepository = userRepository;
         this.productMapper = productMapper;
     }
 
@@ -54,11 +64,17 @@ public class ProductResource {
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("/products")
-    public ResponseEntity<Product> createProduct(@Valid @RequestBody Product product) throws URISyntaxException {
+    @PreAuthorize("hasAuthority(\"" + SELLER + "\")")
+    public ResponseEntity<Product> createProduct(@Valid @RequestBody Product product, Authentication authentication) throws URISyntaxException {
         log.debug("REST request to save Product : {}", product);
         if (product.getId() != null) {
             throw new BadRequestAlertException("A new product cannot already have an ID", ENTITY_NAME, "idexists");
         }
+
+        String loggedUserName = authentication.getName();
+        User loggedUser = userRepository.findOneByUsername(loggedUserName).get();
+        product.setSeller(loggedUser);
+
         Product result = productRepository.save(product);
         return ResponseEntity
             .created(new URI("/api/products/" + result.getId()))
@@ -77,6 +93,7 @@ public class ProductResource {
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PutMapping("/products/{id}")
+    @PreAuthorize("hasAuthority(\"" + SELLER + "\")")
     public ResponseEntity<Product> updateProduct(
         @PathVariable(value = "id", required = false) final Long id,
         @Valid @RequestBody Product product
@@ -112,6 +129,7 @@ public class ProductResource {
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PatchMapping(value = "/products/{id}", consumes = "application/merge-patch+json")
+    @PreAuthorize("hasAuthority(\"" + SELLER + "\")")
     public ResponseEntity<Product> partialUpdateProduct(
         @PathVariable(value = "id", required = false) final Long id,
         @NotNull @RequestBody Product product
@@ -190,8 +208,16 @@ public class ProductResource {
      * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
      */
     @DeleteMapping("/products/{id}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+    @PreAuthorize("hasAuthority(\"" + SELLER + "\")")
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long id, Authentication authentication) {
         log.debug("REST request to delete Product : {}", id);
+
+        User loggedUser = userRepository.findOneByUsername(authentication.getName()).get();
+        Product product = productRepository.getOne(id);
+        User seller = product.getSeller();
+        if (!loggedUser.equals(seller)) {
+            throw new BadRequestAlertException("Forbidden. Only the SELLER of this product can delete it", ENTITY_NAME, "");
+        }
         productRepository.deleteById(id);
         return ResponseEntity
             .noContent()

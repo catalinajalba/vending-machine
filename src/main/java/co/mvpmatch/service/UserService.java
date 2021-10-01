@@ -31,6 +31,7 @@ public class UserService {
     }
 
     public User createUser(User user) {
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         userRepository.save(user);
         log.debug("Created Information for User: {}", user);
         return user;

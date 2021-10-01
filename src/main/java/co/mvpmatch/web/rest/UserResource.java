@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tech.jhipster.web.util.HeaderUtil;
 import tech.jhipster.web.util.ResponseUtil;
@@ -48,7 +49,6 @@ public class UserResource {
      * @throws BadRequestAlertException {@code 400 (Bad Request)} if the login or email is already in use.
      */
     @PostMapping
-//    @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
     public ResponseEntity<User> createUser(@Valid @RequestBody User user) throws URISyntaxException {
         log.debug("REST request to save User : {}", user);
 
@@ -70,7 +70,7 @@ public class UserResource {
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the updated user.
      */
     @PutMapping
-//    @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<User> updateUser(@Valid @RequestBody User user) {
         log.debug("REST request to update User : {}", user);
 
@@ -85,7 +85,7 @@ public class UserResource {
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body all users.
      */
     @GetMapping
-//    @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<User>> getAllUsers() {
         log.debug("REST request to get all User");
         return ResponseEntity.ok().body(userService.getAllUsers());
@@ -98,7 +98,7 @@ public class UserResource {
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the "login" user, or with status {@code 404 (Not Found)}.
      */
     @GetMapping("/{id}")
-//    @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<User> getUser(@PathVariable Long id) {
         log.debug("REST request to get User : {}", id);
         return ResponseUtil.wrapOrNotFound(userService.getUserById(id));
@@ -111,7 +111,7 @@ public class UserResource {
      * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
      */
     @DeleteMapping("/{id}")
-//    @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         log.debug("REST request to delete User: {}", id);
         userService.deleteUserById(id);

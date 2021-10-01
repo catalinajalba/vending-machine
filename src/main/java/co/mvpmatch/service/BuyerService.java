@@ -1,13 +1,12 @@
 package co.mvpmatch.service;
 
-import co.mvpmatch.domain.Product;
 import co.mvpmatch.domain.User;
 import co.mvpmatch.repository.ProductRepository;
 import co.mvpmatch.repository.UserRepository;
 import co.mvpmatch.service.dto.BuyResponse;
+import co.mvpmatch.web.rest.errors.BadRequestAlertException;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import static java.lang.Math.toIntExact;
@@ -32,11 +31,11 @@ public class BuyerService {
                 Long totalCost = quantity * product.getCost();
                 User buyer = userRepository.findOneByUsername(userName).get();
                 if (buyer.getMoney() < totalCost) {
-                    throw new RuntimeException("Not enough money.");
+                    throw new BadRequestAlertException("Not enough money.","","");
                 }
 
                 if (product.getAmountAvailable() < quantity) {
-                    throw new RuntimeException("Amount unavailable");
+                    throw new BadRequestAlertException("Amount unavailable","","");
                 }
 
                 substractMoney(buyer.getDeposit(), totalCost);
@@ -57,6 +56,9 @@ public class BuyerService {
 
     public void deposit(String userName, Integer coin, Integer nr) {
         User buyer = userRepository.findOneByUsername(userName).get();
+        if (!buyer.getDeposit().containsKey(coin)) {
+            throw new BadRequestAlertException("Wrong coin. Please add only coins of 5, 10, 20, 50, 100 cents.","","");
+        }
         addMoney(buyer.getDeposit(), coin, nr);
     }
 
