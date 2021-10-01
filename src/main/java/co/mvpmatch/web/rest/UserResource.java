@@ -2,6 +2,7 @@ package co.mvpmatch.web.rest;
 
 import co.mvpmatch.domain.User;
 import co.mvpmatch.repository.UserRepository;
+import co.mvpmatch.security.AuthoritiesConstants;
 import co.mvpmatch.service.UserService;
 import co.mvpmatch.web.rest.errors.BadRequestAlertException;
 import org.slf4j.Logger;
@@ -18,6 +19,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Optional;
+
+import static co.mvpmatch.security.AuthoritiesConstants.BUYER;
+import static co.mvpmatch.security.AuthoritiesConstants.SELLER;
 
 /**
  * REST controller for managing users.
@@ -54,13 +58,24 @@ public class UserResource {
 
         if (user.getId() != null) {
             throw new BadRequestAlertException("A new user cannot already have an ID", "userManagement", "idexists");
-        } else {
-            User newUser = userService.createUser(user);
-            return ResponseEntity
-                .created(new URI("/api/users/" + newUser.getId()))
-                .headers(HeaderUtil.createAlert(applicationName, "userManagement.created", newUser.getId().toString()))
-                .body(newUser);
         }
+
+        if (user.getRole() == null) {
+            throw new BadRequestAlertException("Role is mandatory", "userManagement", "role");
+        } else if (!isActiveRole(user)) {
+            throw new BadRequestAlertException("Role not allowed. Possible roles BUYER/SELLER", "userManagement", "");
+        }
+
+        User newUser = userService.createUser(user);
+        return ResponseEntity
+            .created(new URI("/api/users/" + newUser.getId()))
+            .headers(HeaderUtil.createAlert(applicationName, "userManagement.created", newUser.getId().toString()))
+            .body(newUser);
+    }
+
+    private boolean isActiveRole(User user) {
+        return SELLER.equals(user.getRole().toUpperCase()) ||
+            BUYER.equals(user.getRole().toUpperCase());
     }
 
     /**
@@ -74,8 +89,10 @@ public class UserResource {
     public ResponseEntity<User> updateUser(@Valid @RequestBody User user) {
         log.debug("REST request to update User : {}", user);
 
+        if (user.getRole() != null && !isActiveRole(user)) {
+            throw new BadRequestAlertException("Role not allowed. Possible roles BUYER/SELLER", "userManagement", "");
+        }
         Optional<User> updatedUser = userService.updateUser(user);
-
         return ResponseEntity.ok().body(updatedUser.get());
     }
 

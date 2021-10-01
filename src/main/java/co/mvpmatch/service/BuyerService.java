@@ -7,7 +7,11 @@ import co.mvpmatch.service.dto.BuyResponse;
 import co.mvpmatch.web.rest.errors.BadRequestAlertException;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
+import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static java.lang.Math.toIntExact;
 import static java.util.Map.entry;
@@ -38,10 +42,11 @@ public class BuyerService {
                     throw new BadRequestAlertException("Amount unavailable","","");
                 }
 
-                substractMoney(buyer.getDeposit(), totalCost);
+                List<Integer> coinTypesOrderedDesc = buyer.getDeposit().keySet().stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
+                change(coinTypesOrderedDesc, buyer.getDeposit(), coinTypesOrderedDesc.get(0), toIntExact(totalCost));
 
-                User seller = userRepository.findById(product.getSeller().getId()).get();
-                addMoney(seller.getDeposit(), totalCost);
+//                User seller = userRepository.findById(product.getSeller().getId()).get();
+//                addMoney(seller.getDeposit(), totalCost);
 
                 product.setAmountAvailable(product.getAmountAvailable() - quantity);
 
@@ -75,78 +80,100 @@ public class BuyerService {
         return change;
     }
 
-    private void substractMoney(Map<Integer, Integer> deposit, Long value) {
-        Integer coins_100 = toIntExact(value/100);
-        Integer have_100 = deposit.get(100);
-        if (have_100 > coins_100) {
-            deposit.put(100, deposit.get(100) - coins_100);
-            value = value%100;
-        } else {
-            deposit.put(100, 0);
-            value -= have_100 * 100;
-        }
 
-        Integer coins_50 = toIntExact(value/50);
-        Integer have_50 = deposit.get(50);
-        if (have_50 > coins_50) {
-            deposit.put(50, deposit.get(50) - coins_50);
-            value = value%50;
-        } else {
-            deposit.put(50, 0);
-            value -= have_50 * 50;
-        }
 
-        Integer coins_20 = toIntExact(value/20);
-        Integer have_20 = deposit.get(20);
-        if (have_20 > coins_20) {
-            deposit.put(20, deposit.get(20) - coins_20);
-            value = value%20;
-        } else {
-            deposit.put(20, 0);
-            value -= have_20 * 20;
-        }
+    public static void change(Map<Integer, Integer> deposit, Integer value) {
 
-        Integer coins_10 = toIntExact(value/10);
-        Integer have_10 = deposit.get(10);
-        if (have_10 > coins_10) {
-            deposit.put(10, deposit.get(10) - coins_10);
-            value = value%10;
-        } else {
-            deposit.put(10, 0);
-            value -= have_10 * 10;
-        }
+        // precondition - value <= total funds
+        List<Integer> coinTypesOrderedDesc = deposit.keySet().stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
 
-        Integer coins_5 = toIntExact(value/5);
-        Integer have_5 = deposit.get(5);
-        if (have_5 > coins_5) {
-            deposit.put(5, deposit.get(5) - coins_5);
-            value = value%5;
+        change(coinTypesOrderedDesc, deposit, coinTypesOrderedDesc.get(0), value);
+    }
+
+    public static void change(List<Integer> coinTypesOrderedDesc, Map<Integer, Integer> deposit, int coin, int value) {
+        int neededCoins = value/coin;
+        int coinsIHave = deposit.get(coin);
+
+        if (coinsIHave > neededCoins) {
+            value -= neededCoins * coin;
+            takeCoins(deposit, coin, neededCoins);
+            int lessValuableCoinsTotal = sumMinorCoins(deposit, coin, coinTypesOrderedDesc);
+            if (lessValuableCoinsTotal < value) {
+                takeCoins(deposit, coin, 1);
+                takeMinorCoins(deposit, coin, coinTypesOrderedDesc);
+                giveBackChange(deposit, coin, coinTypesOrderedDesc, (coin + lessValuableCoinsTotal) - value);
+            } else {
+                change(coinTypesOrderedDesc, deposit, coinTypesOrderedDesc.get(coinTypesOrderedDesc.indexOf(coin) + 1), value);
+            }
         } else {
-            deposit.put(5, 0);
-            value -= have_5 * 5;
+            value -= coinsIHave * coin;
+            takeCoins(deposit, coin, coinsIHave);
+            if (value > 0) {
+                change(coinTypesOrderedDesc, deposit, coinTypesOrderedDesc.get(coinTypesOrderedDesc.indexOf(coin) + 1), value);
+            }
+            // else stop recursive calls and exit
         }
     }
 
-    private void addMoney(Map<Integer, Integer> deposit, Long value) {
-        Integer coins_100 = toIntExact(value/100);
-        value = value%100;
+    private static void takeCoins(Map<Integer, Integer> deposit, int coin, int neededCoins) {
+        if (deposit.get(coin) < neededCoins) {
+            throw new RuntimeException("Not enough coins.");
+        }
+        int remainedNrOfCoins = deposit.get(coin) - neededCoins;
+        deposit.put(coin, remainedNrOfCoins);
+    }
 
-        Integer coins_50 = toIntExact(value /50);
-        value = value%50;
+    private static void giveCoins(Map<Integer, Integer> deposit, int coin, int nr) {
+        int updatedNrOfCoins = deposit.get(coin) + nr;
+        deposit.put(coin, updatedNrOfCoins);
+    }
 
-        Integer coins_20 = toIntExact(value /20);
-        value = value%20;
+    public static int sumMinorCoins(Map<Integer, Integer> deposit, int coin, List<Integer> coinTypesOrderedDesc) {
+        int sum = 0;
 
-        Integer coins_10 = toIntExact(value /10);
-        value = value%10;
+        ListIterator<Integer> index = coinTypesOrderedDesc.listIterator();
+        while (index.hasNext()) {
+            int coinType = index.next();
+            if (coinType == coin) {
+                while (index.hasNext()) {
+                    coinType = index.next();
+                    sum += deposit.get(coinType) * coinType;
+                }
+                break;
+            }
+        }
 
-        Integer coins_5 = toIntExact(value /5);
+        return sum;
+    }
 
-        deposit.put(100, deposit.get(100) + coins_100);
-        deposit.put(50, deposit.get(50) + coins_50);
-        deposit.put(20, deposit.get(20) + coins_20);
-        deposit.put(10, deposit.get(10) + coins_10);
-        deposit.put(5, deposit.get(5) + coins_5);
+    public static void takeMinorCoins(Map<Integer, Integer> deposit, int coin, List<Integer> coinTypesOrderedDesc) {
+        ListIterator<Integer> index = coinTypesOrderedDesc.listIterator();
+        while (index.hasNext()) {
+            int coinType = index.next();
+            if (coinType == coin) {
+                while(index.hasNext()) {
+                    coinType = index.next();
+                    deposit.put(coinType, 0);
+                }
+                return;
+            }
+        }
+    }
+
+    private static void giveBackChange(Map<Integer, Integer> deposit, int coin, List<Integer> coinTypesOrderedDesc, int value) {
+        ListIterator<Integer> index = coinTypesOrderedDesc.listIterator();
+        while (index.hasNext()) {
+            int coinType = index.next();
+            if (coinType == coin) {
+                while((value > 0) && index.hasNext()) {
+                    coinType = index.next();
+                    int neededCoins = value/coinType;
+                    giveCoins(deposit, coinType, neededCoins);
+                    value -= neededCoins * coinType;
+                }
+                return;
+            }
+        }
     }
 
     private void addMoney(Map<Integer, Integer> deposit, Integer coin, Integer nr) {

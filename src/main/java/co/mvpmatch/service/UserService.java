@@ -2,6 +2,7 @@ package co.mvpmatch.service;
 
 import co.mvpmatch.domain.User;
 import co.mvpmatch.repository.UserRepository;
+import co.mvpmatch.web.rest.errors.BadRequestAlertException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,7 @@ public class UserService {
     }
 
     public User createUser(User user) {
+        user.setRole(user.getRole().toUpperCase());
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         userRepository.save(user);
         log.debug("Created Information for User: {}", user);
@@ -44,16 +46,19 @@ public class UserService {
      * @return updated user.
      */
     public Optional<User> updateUser(User user) {
+
         return Optional
             .of(userRepository.findById(user.getId()))
             .filter(Optional::isPresent)
             .map(Optional::get)
             .map(
                 existingUser -> {
+                    if (user.getRole() != null && !existingUser.getRole().equalsIgnoreCase(user.getRole())) {
+                        throw new BadRequestAlertException("Update role not allowed", "userManagement", "");
+                    }
                     if (StringUtils.isNotBlank(user.getUsername())) existingUser.setUsername(user.getUsername());
-                    if (StringUtils.isNotBlank(user.getPassword())) existingUser.setPassword(user.getPassword());
-                    if (StringUtils.isNotBlank(user.getRole())) existingUser.setRole(user.getRole());
-                    if (user.getDeposit() != null)  existingUser.setDeposit(user.getDeposit());
+                    if (StringUtils.isNotBlank(user.getPassword())) existingUser.setPassword(passwordEncoder.encode(user.getPassword()));
+                    if (user.getDeposit() != null) existingUser.setDeposit(user.getDeposit());
                     log.debug("Changed Information for User: {}", existingUser);
                     return existingUser;
                 }

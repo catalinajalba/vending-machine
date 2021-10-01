@@ -69,6 +69,8 @@ public class ProductResource {
         log.debug("REST request to save Product : {}", product);
         if (product.getId() != null) {
             throw new BadRequestAlertException("A new product cannot already have an ID", ENTITY_NAME, "idexists");
+        } else if (product.getCost() % 5 != 0) {
+            throw new BadRequestAlertException("Wrong value for the cost. In order to give change the cost must be a multiple of 5.", ENTITY_NAME, "");
         }
 
         String loggedUserName = authentication.getName();
@@ -102,12 +104,17 @@ public class ProductResource {
         if (product.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
+
         if (!Objects.equals(id, product.getId())) {
             throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
         }
 
         if (!productRepository.existsById(id)) {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
+        }
+
+        if (product.getCost() % 5 != 0) {
+            throw new BadRequestAlertException("Wrong value for the cost. In order to give change the cost must be a multiple of 5.", ENTITY_NAME, "");
         }
 
         Product result = productRepository.save(product);
