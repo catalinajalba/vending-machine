@@ -1,5 +1,6 @@
 package co.mvpmatch.web.rest;
 
+import static co.mvpmatch.security.AuthoritiesConstants.SELLER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -13,12 +14,15 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.persistence.EntityManager;
+
+import co.mvpmatch.security.AuthoritiesConstants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
 class ProductResourceIT {
 
     private static final String DEFAULT_NAME = "AAAAAAAAAA";
@@ -36,8 +39,8 @@ class ProductResourceIT {
     private static final Long DEFAULT_AMOUNT_AVAILABLE = 1L;
     private static final Long UPDATED_AMOUNT_AVAILABLE = 2L;
 
-    private static final Long DEFAULT_COST = 1L;
-    private static final Long UPDATED_COST = 2L;
+    private static final Long DEFAULT_COST = 10L;
+    private static final Long UPDATED_COST = 20L;
 
     private static final String ENTITY_API_URL = "/api/products";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
@@ -265,6 +268,7 @@ class ProductResourceIT {
     }
 
     @Test
+    @WithMockUser(username = "catalina", roles = {SELLER})
     @Transactional
     void putWithIdMismatchProduct() throws Exception {
         int databaseSizeBeforeUpdate = productRepository.findAll().size();
@@ -283,6 +287,9 @@ class ProductResourceIT {
         List<Product> productList = productRepository.findAll();
         assertThat(productList).hasSize(databaseSizeBeforeUpdate);
     }
+
+
+
 
     @Test
     @Transactional
@@ -401,6 +408,7 @@ class ProductResourceIT {
     }
 
     @Test
+    @WithMockUser
     @Transactional
     void patchWithMissingIdPathParamProduct() throws Exception {
         int databaseSizeBeforeUpdate = productRepository.findAll().size();

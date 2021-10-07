@@ -1,11 +1,9 @@
 package co.mvpmatch.web.rest;
 
 import co.mvpmatch.domain.Product;
-import co.mvpmatch.domain.Product_;
 import co.mvpmatch.domain.User;
 import co.mvpmatch.repository.ProductRepository;
 import co.mvpmatch.repository.UserRepository;
-import co.mvpmatch.security.AuthoritiesConstants;
 import co.mvpmatch.service.dto.ProductDTO;
 import co.mvpmatch.service.dto.ProductMapper;
 import co.mvpmatch.web.rest.errors.BadRequestAlertException;

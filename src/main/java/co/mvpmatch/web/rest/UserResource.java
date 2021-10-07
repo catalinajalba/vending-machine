@@ -2,7 +2,6 @@ package co.mvpmatch.web.rest;
 
 import co.mvpmatch.domain.User;
 import co.mvpmatch.repository.UserRepository;
-import co.mvpmatch.security.AuthoritiesConstants;
 import co.mvpmatch.service.UserService;
 import co.mvpmatch.web.rest.errors.BadRequestAlertException;
 import org.slf4j.Logger;
